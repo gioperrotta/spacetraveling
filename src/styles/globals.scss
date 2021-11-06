@@ -4,4 +4,35 @@
   padding: 0;
 }
 
-// TODO
+html {
+  @media (max-width: 1080px) {
+    font-size: 93.75%;
+  }
+
+  @media (max-width: 720px) {
+    font-size: 87.5%;
+  }
+}
+
+:root {
+  --background: #1A1D23;
+  --highlight: #FF57B2;
+  --heading: #F8F8F8;
+  --info: #BBBBBB;
+  --body: #D7D7D7;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--heading);
+  overflow-x: hidden;
+}
+
+body, input, textarea, select, button {
+  font-family: 'Inter', sans-serif;
+  font-weight: 400px;
+}
+
+button {
+  cursor: pointer;
+}
