@@ -12,7 +12,8 @@ import Prismic from '@prismicio/client';
 import { RichText, } from 'prismic-dom';
 import { getPrismicClient } from '../../services/prismic';
 
-import commonStyles from '../../styles/common.module.scss';
+import Comments from '../../components/Comments';
+
 import styles from './post.module.scss';
 
 interface Post {
@@ -21,7 +22,7 @@ interface Post {
   last_publication_date: string | null;
   data: {
     title: string;
-    subtitle:string;
+    subtitle: string;
     banner: {
       url: string;
     };
@@ -35,13 +36,22 @@ interface Post {
   }
 }
 
+interface NeighborPost {
+  title: string;
+  slug: string;
+}
+
 
 interface PostProps {
   post: Post;
+  prevPost: NeighborPost;
+  nextPost: NeighborPost;
 }
 
-export default function Post({ post }: PostProps) {
+export default function Post({ post, prevPost, nextPost }: PostProps) {
   const [timeRead, setTimeRead] = useState(0);
+ // const [nextPost, setNextPost] = useState<NeighborPost | false>({ title: '', slug: '' })
+ // const [prevPost, setPrevPost] = useState<NeighborPost | false>({ title: '', slug: '' })
 
   const router = useRouter()
   if (router.isFallback) {
@@ -49,7 +59,7 @@ export default function Post({ post }: PostProps) {
   }
 
   useEffect(() => {
-   // loadNeighborsPosts()
+    // loadNeighborsPosts()
     const textHeading = post.data.content.map(item => item.heading)
     const textBody = post.data.content.map(item => RichText.asText(item.body))
 
@@ -97,10 +107,46 @@ export default function Post({ post }: PostProps) {
           ))}
 
         </div>
-     </div>
-     <div className={styles.line}></div>
+
+        <div className={styles.line}></div>
+
+
+        <div className={styles['container-posts-pagination']} >
+          {prevPost ? (
+            <Link href={`/post/${prevPost?.slug}`}>
+              <div>
+                <span>{prevPost?.title}</span>
+                <span>Post Anterior</span>
+              </div>
+            </Link>
+          ) : ''}
+
+          {nextPost ? (
+            <Link href={`/post/${nextPost.slug}`}>
+              <div>
+                <span>{nextPost.title}</span>
+                <span>Próximo Post</span>
+              </div>
+            </Link>
+          ) : ''}
+
+        </div>
+        <div className={styles.comments}>
+          <Comments/>
+        </div>
+      </div>
+
     </>
   )
+};
+
+function verifyNeighborPost(post, slug): NeighborPost | null {
+  return slug === post.results[0].uid
+    ? null
+    : {
+      title: post.results[0]?.data?.title,
+      slug: post.results[0]?.uid,
+    };
 }
 
 export const getStaticProps: GetStaticProps<PostProps> = async ({ params }) => {
@@ -110,7 +156,31 @@ export const getStaticProps: GetStaticProps<PostProps> = async ({ params }) => {
   const prismic = getPrismicClient();
   const response = await prismic.getByUID('posts', String(slug), {});
 
-   const post: Post = {
+  const responsePrevPost = await prismic.query([
+    Prismic.Predicates.at('document.type', 'posts')
+  ],
+  {
+    pageSize: 1,
+    after: slug,
+    orderings: '[document.first_publication_date desc]',
+  }
+  );
+
+  const prevPost = verifyNeighborPost(responsePrevPost, slug);
+
+  const responseNextPost = await prismic.query([
+    Prismic.Predicates.at('document.type', 'posts')
+  ],
+  {
+    pageSize: 1,
+    after: slug,
+    orderings: '[document.first_publication_date]',
+  }
+  );
+
+  const nextPost = verifyNeighborPost(responseNextPost, slug);
+
+ const post: Post = {
     uid: response.uid,
     first_publication_date: response.first_publication_date,
     last_publication_date: response.last_publication_date,
@@ -125,7 +195,9 @@ export const getStaticProps: GetStaticProps<PostProps> = async ({ params }) => {
 
   return {
     props: {
-      post
+      post,
+      prevPost,
+      nextPost
     },
     revalidate: 60 * 60,// 1(one) hour
   }
